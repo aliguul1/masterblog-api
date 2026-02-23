@@ -6,34 +6,58 @@ CORS(app)
 
 # Hardcoded data structure
 POSTS = [
-    {"id": 1, "title": "First post", "content": "This is the first post."},
-    {"id": 2, "title": "Second post", "content": "This is the second post."},
+    {"id": 1, "title": "Apple post", "content": "Zebra content."},
+    {"id": 2, "title": "Zebra post", "content": "Apple content."},
 ]
 
 
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
-    """Returns the current list of blog posts."""
-    return jsonify(POSTS)
+    """
+    Step 6: Enhanced list endpoint with optional sorting.
+    Supports sort (title, content) and direction (asc, desc).
+    """
+    sort_field = request.args.get('sort')
+    direction = request.args.get('direction', 'asc').lower()
+
+    # Validation requirements
+    valid_sort_fields = ['title', 'content']
+    valid_directions = ['asc', 'desc']
+
+    # Error Handling: Validate sort field if provided
+    if sort_field and sort_field not in valid_sort_fields:
+        return jsonify({"error": f"Invalid sort field: {sort_field}"}), 400
+
+    # Error Handling: Validate direction
+    if direction not in valid_directions:
+        return jsonify({"error": f"Invalid direction: {direction}"}), 400
+
+    # Create a copy to avoid mutating global data
+    result_posts = list(POSTS)
+
+    # Apply sorting logic only if sort_field is present
+    if sort_field:
+        reverse_order = (direction == 'desc')
+        result_posts = sorted(
+            result_posts,
+            key=lambda x: x[sort_field].lower(),
+            reverse=reverse_order
+        )
+
+    return jsonify(result_posts), 200
 
 
 @app.route('/api/posts/search', methods=['GET'])
 def search_posts():
-    """
-    Step 5: Search Endpoint.
-    IMPORTANT: Defined BEFORE /api/posts/<id> to avoid routing conflicts.
-    """
+    """Step 5: Search posts by title and/or content."""
     title_query = request.args.get('title', '').lower()
     content_query = request.args.get('content', '').lower()
 
     filtered_posts = []
 
     for post in POSTS:
-        # Check if title matches if query provided
         title_match = (title_query in post['title'].lower()
                        if title_query else True)
-
-        # Check if content matches if query provided
         content_match = (content_query in post['content'].lower()
                          if content_query else True)
 
@@ -74,10 +98,7 @@ def add_post():
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
 def update_post(post_id):
-    """
-    Step 4: Update Endpoint.
-    Updates an existing post by ID. Handles 404 if not found.
-    """
+    """Step 4: Update an existing post."""
     post = next((p for p in POSTS if p['id'] == post_id), None)
 
     if post is None:
@@ -87,7 +108,6 @@ def update_post(post_id):
     if not data:
         return jsonify({"error": "No data provided"}), 400
 
-    # Requirement: Update fields if provided, keep current values otherwise
     post['title'] = data.get('title', post['title'])
     post['content'] = data.get('content', post['content'])
 
@@ -112,5 +132,4 @@ def delete_post(post_id):
 
 
 if __name__ == '__main__':
-    # host="0.0.0.0" allows connectivity via IP 10.132.16.185
     app.run(host="0.0.0.0", port=5002, debug=True)
