@@ -54,19 +54,40 @@ def delete_post(post_id):
     """
     global POSTS
 
-    # Locate the post to confirm existence
     post = next((p for p in POSTS if p['id'] == post_id), None)
 
     if post is None:
-        # Fulfills Step 3: Error Handling requirement
         return jsonify({"error": f"Post with id {post_id} was not found."}), 404
 
-    # Generic file/list handling: filter out the post with the matching ID
     POSTS = [p for p in POSTS if p['id'] != post_id]
 
     return jsonify({
         "message": f"Post with id {post_id} has been deleted successfully."
     }), 200
+
+
+@app.route('/api/posts/<int:id>', methods=['PUT'])
+def update_post(id):
+    """
+    Updates an existing post by its unique ID.
+    Supports partial updates (title or content).
+    """
+    # 1. Locate the post to confirm existence
+    post = next((p for p in POSTS if p['id'] == id), None)
+
+    if post is None:
+        # Error Handling: Return 404 if post doesn't exist
+        return jsonify({"message": f"Post with id {id} was not found."}), 404
+
+    # 2. Extract data from the request
+    data = request.get_json()
+
+    # 3. Apply updates (use .get to keep current values if keys are missing)
+    post['title'] = data.get('title', post['title'])
+    post['content'] = data.get('content', post['content'])
+
+    # 4. Return updated post with 200 OK
+    return jsonify(post), 200
 
 
 if __name__ == '__main__':
