@@ -17,6 +17,32 @@ def get_posts():
     return jsonify(POSTS)
 
 
+@app.route('/api/posts/search', methods=['GET'])
+def search_posts():
+    """
+    Step 5: Search Endpoint.
+    IMPORTANT: Defined BEFORE /api/posts/<id> to avoid routing conflicts.
+    """
+    title_query = request.args.get('title', '').lower()
+    content_query = request.args.get('content', '').lower()
+
+    filtered_posts = []
+
+    for post in POSTS:
+        # Check if title matches if query provided
+        title_match = (title_query in post['title'].lower()
+                       if title_query else True)
+
+        # Check if content matches if query provided
+        content_match = (content_query in post['content'].lower()
+                         if content_query else True)
+
+        if title_match and content_match:
+            filtered_posts.append(post)
+
+    return jsonify(filtered_posts), 200
+
+
 @app.route('/api/posts', methods=['POST'])
 def add_post():
     """Validates and adds a new blog post."""
@@ -46,12 +72,31 @@ def add_post():
     return jsonify(new_post), 201
 
 
+@app.route('/api/posts/<int:post_id>', methods=['PUT'])
+def update_post(post_id):
+    """
+    Step 4: Update Endpoint.
+    Updates an existing post by ID. Handles 404 if not found.
+    """
+    post = next((p for p in POSTS if p['id'] == post_id), None)
+
+    if post is None:
+        return jsonify({"message": f"Post with id {post_id} was not found."}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    # Requirement: Update fields if provided, keep current values otherwise
+    post['title'] = data.get('title', post['title'])
+    post['content'] = data.get('content', post['content'])
+
+    return jsonify(post), 200
+
+
 @app.route('/api/posts/<int:post_id>', methods=['DELETE'])
 def delete_post(post_id):
-    """
-    Deletes a post by its unique ID.
-    Returns 404 if the ID does not exist.
-    """
+    """Deletes a post by its unique ID."""
     global POSTS
 
     post = next((p for p in POSTS if p['id'] == post_id), None)
@@ -66,29 +111,6 @@ def delete_post(post_id):
     }), 200
 
 
-@app.route('/api/posts/<int:id>', methods=['PUT'])
-def update_post(id):
-    """
-    Updates an existing post by its unique ID.
-    Supports partial updates (title or content).
-    """
-    # 1. Locate the post to confirm existence
-    post = next((p for p in POSTS if p['id'] == id), None)
-
-    if post is None:
-        # Error Handling: Return 404 if post doesn't exist
-        return jsonify({"message": f"Post with id {id} was not found."}), 404
-
-    # 2. Extract data from the request
-    data = request.get_json()
-
-    # 3. Apply updates (use .get to keep current values if keys are missing)
-    post['title'] = data.get('title', post['title'])
-    post['content'] = data.get('content', post['content'])
-
-    # 4. Return updated post with 200 OK
-    return jsonify(post), 200
-
-
 if __name__ == '__main__':
+    # host="0.0.0.0" allows connectivity via IP 10.132.16.185
     app.run(host="0.0.0.0", port=5002, debug=True)
